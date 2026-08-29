@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>HGV Pay Calculator</title>
+<style>
+:root{
+  --ink:#0f1720; --panel:#16212c; --panel2:#1d2b38; --line:#2b3d4d;
+  --text:#e6eef5; --dim:#8ba0b3; --faint:#5c7286;
+  --basic:#4a7fb5; --ot:#e0a13c; --night:#7b6bd6; --wknd:#3fa48a;
+  --good:#3fa48a; --bad:#d9605a;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--ink); color:var(--text);
+  font:15px/1.45 ui-sans-serif,system-ui,"Segoe UI",Roboto,sans-serif;
+  -webkit-text-size-adjust:100%;
+}
+.num{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-variant-numeric:tabular-nums}
+header{padding:14px 16px 10px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--ink);z-index:20}
+h1{margin:0;font-size:15px;letter-spacing:.14em;text-transform:uppercase;font-weight:600;color:var(--dim)}
+.periodbar{display:flex;align-items:center;gap:10px;margin-top:8px}
+.periodbar button{flex:0 0 auto}
+.periodbar .p{flex:1;min-width:0}
+.p .rng{font-size:17px;font-weight:600}
+.p .pay{font-size:12px;color:var(--faint);margin-top:1px}
+nav{display:flex;gap:2px;padding:8px 10px;overflow-x:auto;border-bottom:1px solid var(--line);background:var(--ink);position:sticky;top:0;z-index:19}
+nav button{white-space:nowrap;background:transparent;border:1px solid transparent;color:var(--dim);padding:7px 12px;border-radius:7px;font-size:13px;cursor:pointer}
+nav button.on{background:var(--panel2);color:var(--text);border-color:var(--line)}
+main{padding:12px 12px 60px;max-width:760px;margin:0 auto}
+section{display:none}
+section.on{display:block}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:12px}
+.card h2{margin:0 0 10px;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--faint);font-weight:600}
+.row{display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:5px 0}
+.row+.row{border-top:1px solid rgba(255,255,255,.04)}
+.row .k{color:var(--dim);font-size:14px}
+.row .k small{display:block;color:var(--faint);font-size:11px}
+.row .v{font-size:15px;white-space:nowrap}
+.row.total{border-top:1px solid var(--line);margin-top:6px;padding-top:10px}
+.row.total .k{color:var(--text);font-weight:600}
+.row.total .v{font-size:20px;font-weight:700}
+.neg .v{color:var(--bad)}
+.hero{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:12px}
+.hero .lbl{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--faint)}
+.hero .big{font-size:38px;font-weight:700;line-height:1.05;margin-top:4px}
+.hero .sub{color:var(--dim);font-size:13px;margin-top:6px}
+.bar{display:flex;height:9px;border-radius:5px;overflow:hidden;background:#0b1219;margin:12px 0 8px}
+.bar i{display:block;height:100%}
+.key{display:flex;flex-wrap:wrap;gap:10px 14px;font-size:11.5px;color:var(--dim)}
+.key span{display:flex;align-items:center;gap:5px}
+.dot{width:8px;height:8px;border-radius:2px;display:inline-block}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:right;color:var(--faint);font-weight:600;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;padding:0 0 6px}
+th:first-child,td:first-child{text-align:left}
+td{padding:6px 0;border-top:1px solid rgba(255,255,255,.05);text-align:right}
+tr.ot td{color:var(--ot)}
+tr.tot td{border-top:1px solid var(--line)}
+input,select{background:#0b1219;border:1px solid var(--line);color:var(--text);border-radius:8px;padding:9px 10px;font-size:15px;width:100%;font-family:inherit}
+input:focus,select:focus{outline:2px solid var(--basic);outline-offset:1px}
+label{display:block;font-size:11px;color:var(--faint);letter-spacing:.08em;text-transform:uppercase;margin:0 0 4px}
+.grid{display:grid;gap:10px}
+.g2{grid-template-columns:1fr 1fr}
+.g3{grid-template-columns:1fr 1fr 1fr}
+button.btn{background:var(--basic);border:none;color:#fff;padding:10px 14px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit}
+button.ghost{background:transparent;border:1px solid var(--line);color:var(--dim)}
+button.mini{padding:6px 10px;font-size:12px}
+.shift{display:flex;align-items:center;gap:10px;padding:9px 0;border-top:1px solid rgba(255,255,255,.05)}
+.shift .d{width:64px;font-size:12px;color:var(--dim)}
+.shift .d b{display:block;color:var(--text);font-size:14px;font-weight:600}
+.shift .t{flex:1;min-width:0}
+.shift .t .tm{font-size:14px}
+.shift .t .mini-bar{display:flex;height:5px;border-radius:3px;overflow:hidden;background:#0b1219;margin-top:5px}
+.shift .h{width:52px;text-align:right;font-size:14px}
+.shift .x{background:none;border:none;color:var(--faint);font-size:18px;cursor:pointer;padding:0 4px}
+.drow{display:grid;grid-template-columns:46px 1fr 1fr 42px 62px 28px;gap:5px;align-items:center;padding:5px 0;border-top:1px solid rgba(255,255,255,.05)}
+.drow.rest .dl{color:var(--faint)}
+.drow.wknd .dl b{color:var(--wknd)}
+.dl{font-size:11px;color:var(--dim);letter-spacing:.04em}
+.dl b{display:block;color:var(--text);font-size:14px;letter-spacing:0}
+.drow input{padding:7px 2px;font-size:13px;text-align:center}
+.dh{font-size:13px;text-align:right;color:var(--dim)}
+.dh.has{color:var(--text)}
+.dp{font-size:12.5px;text-align:right;color:var(--faint);font-family:ui-monospace,Menlo,Consolas,monospace}
+.dp.has{color:var(--wknd)}
+.hb{background:transparent;border:1px solid var(--line);color:var(--faint);border-radius:6px;font-size:11px;padding:6px 0;cursor:pointer;font-family:inherit}
+.hb.on{background:var(--wknd);color:#fff;border-color:var(--wknd)}
+.wtot{display:flex;gap:14px;flex-wrap:wrap;font-size:11.5px;color:var(--dim);margin-top:10px;padding-top:9px;border-top:1px solid var(--line)}
+.wtot b{color:var(--text)}
+.extra{font-size:11px;color:var(--ot);padding:2px 0 4px 60px}
+.tag{display:inline-block;font-size:10px;letter-spacing:.08em;text-transform:uppercase;padding:2px 6px;border-radius:4px;background:var(--panel2);color:var(--dim);margin-left:6px}
+.flag{border-left:3px solid var(--ot);padding-left:10px;margin:10px 0;font-size:13px;color:var(--dim)}
+.flag b{color:var(--text);font-weight:600}
+.ok{color:var(--good)} .bad{color:var(--bad)}
+.hint{font-size:12px;color:var(--faint);margin-top:6px}
+.split{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+@media (max-width:400px){.g3{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>HGV Pay Calculator</h1>
+  <div class="periodbar">
+    <button class="btn ghost mini" id="prev">‹</button>
+    <div class="p"><div class="rng num" id="prng">—</div><div class="pay" id="ppay">—</div></div>
+    <button class="btn ghost mini" id="next">›</button>
+  </div>
+</header>
+
+<nav>
+  <button data-t="pay" class="on">Pay</button>
+  <button data-t="weeks">Weeks</button>
+  <button data-t="shifts">Shifts</button>
+  <button data-t="check">Check slip</button>
+  <button data-t="set">Settings</button>
+  <button data-t="notes">Rules</button>
+</nav>
+
+<main>
+
+<section id="tab-pay" class="on">
+  <div class="hero">
+    <div class="lbl">Estimated net pay</div>
+    <div class="big num" id="net">£0.00</div>
+    <div class="sub" id="netsub">—</div>
+    <div class="bar" id="hbar"></div>
+    <div class="key">
+      <span><i class="dot" style="background:var(--basic)"></i>Basic <b class="num" id="kBasic">0</b></span>
+      <span><i class="dot" style="background:var(--ot)"></i>Overtime <b class="num" id="kOt">0</b></span>
+      <span><i class="dot" style="background:var(--night)"></i>Night <b class="num" id="kNight">0</b></span>
+      <span><i class="dot" style="background:var(--wknd)"></i>Weekend <b class="num" id="kWknd">0</b></span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Positive payments</h2>
+    <div id="payments"></div>
+  </div>
+
+  <div class="card">
+    <h2>Deductions</h2>
+    <div id="deds"></div>
+  </div>
+
+  <div class="card">
+    <h2>Hours in period</h2>
+    <div id="hours"></div>
+  </div>
+
+  <div class="card">
+    <h2>Pension rate for this period</h2>
+    <div class="grid g2">
+      <div><label>SMARTT % of gross</label><input type="number" step="0.1" id="ovrPen"></div>
+      <div style="align-self:end"><button class="btn" id="saveOvr" style="width:100%">Apply to this period</button></div>
+    </div>
+    <div class="hint" id="ovrHint"></div>
+    <div class="split"><button class="btn ghost mini" id="clearOvr">Use the default (<span id="defPen"></span>%)</button><button class="btn ghost mini" id="fwdOvr">Apply to this and all later periods</button></div>
+  </div>
+</section>
+
+<section id="tab-weeks">
+  <div id="wgrid"></div>
+  <div class="card">
+    <h2>Period totals</h2>
+    <table id="wtable"></table>
+    <div class="hint">Overtime rule: <b id="wrule"></b>. Change it in Settings. Type straight into any row to add or adjust a shift; clear both times to delete it. H marks a holiday day.</div>
+  </div>
+</section>
+
+<section id="tab-shifts">
+  <div class="card">
+    <h2>Add a shift</h2>
+    <div class="grid g3">
+      <div><label>Date</label><input type="date" id="fD"></div>
+      <div><label>Start</label><input type="time" id="fS" step="900" value="05:00"></div>
+      <div><label>End</label><input type="time" id="fE" step="900" value="15:00"></div>
+    </div>
+    <div class="split">
+      <button class="btn" id="addShift">Add shift</button>
+      <button class="btn ghost" id="addHol">Add holiday day</button>
+    </div>
+    <div class="hint">End before start means the shift runs past midnight. Holiday uses the date only.</div>
+  </div>
+  <div class="card">
+    <h2>Shifts this period</h2>
+    <div id="slist"></div>
+  </div>
+</section>
+
+<section id="tab-check">
+  <div class="card">
+    <h2>Enter what the payslip says</h2>
+    <div class="grid g2" id="actForm"></div>
+    <div class="split"><button class="btn" id="saveAct">Save slip figures</button><button class="btn ghost" id="clearAct">Clear</button></div>
+  </div>
+  <div class="card">
+    <h2>Calculated vs paid</h2>
+    <table id="cmp"></table>
+    <div class="hint">Green is within 1p on money, 0.01 on hours. Anything red is worth a query.</div>
+  </div>
+</section>
+
+<section id="tab-set">
+  <div class="card">
+    <h2>Rates</h2>
+    <div class="grid g2" id="rateForm"></div>
+  </div>
+  <div class="card">
+    <h2>Rules</h2>
+    <div class="grid g2" id="ruleForm"></div>
+  </div>
+  <div class="card">
+    <h2>Deductions</h2>
+    <div class="grid g2" id="dedForm"></div>
+  </div>
+  <div class="card">
+    <h2>Backup &amp; restore</h2>
+    <div class="split">
+      <button class="btn" id="expBtn">Export my data</button>
+      <button class="btn ghost" id="impBtn">Import a backup</button>
+      <input type="file" id="impFile" accept=".json,application/json" style="display:none">
+    </div>
+    <div class="hint">Everything lives in this browser only. Export before clearing browsing data, changing phone, or reinstalling. Importing replaces what is here now.</div>
+  </div>
+  <div class="split">
+    <button class="btn" id="saveSet">Save settings</button>
+    <button class="btn ghost" id="resetAll">Reset everything</button>
+  </div>
+  <div class="hint">Reset wipes shifts, slip figures and settings from this device.</div>
+</section>
+
+<section id="tab-notes">
+  <div class="card">
+    <h2>Getting started</h2>
+    <div class="flag">This is an empty calculator. Load your own figures under Settings, or restore a backup file under Backup &amp; restore.</div>
+    <div class="flag"><b>Rates and rules</b> are all editable in Settings: base rate, premium percentages, the night window, contracted hours and rostered days, holiday day rate, pension percentage, tax code and union subs.</div>
+    <div class="flag"><b>PAYE is an estimate.</b> Real PAYE is cumulative across the tax year; this calculates non-cumulatively, so expect a small difference. National Insurance is exact.</div>
+    <div class="flag"><b>Everything stays on this device</b> in browser storage. Export a backup before clearing browsing data or changing phone.</div>
+  </div>
+</section>
+
+</main>
+
+<script>
+"use strict";
+/* ---------- storage (falls back to memory if the browser blocks it) ---------- */
+var MEM=null;
+var store={
+  read:function(){try{var r=localStorage.getItem('tescopay.v4');return r?JSON.parse(r):MEM;}catch(e){return MEM;}},
+  write:function(o){MEM=o;try{localStorage.setItem('tescopay.v4',JSON.stringify(o));}catch(e){}}
+};
+
+/* ---------- defaults ---------- */
+var DEF={
+  base:0, otMult:1.5, nightPct:0.25, wkndPct:1/3,
+  nightStart:"22:00", nightEnd:"06:00",
+  dayHours:9.25, weekHours:46.25, otRule:"weekly",
+  contractDays:"0,1,2,3,4",
+  holRate:0, daPct:0, pensionPct:0, preTax:0,
+  taxCode:1257, usdaw:0, anchor:"2026-07-05"
+};
+
+var SEED_SHIFTS=[];
+
+var SEED_HOLS=[];
+
+var SEED_ACT={};
+
+var S=store.read();
+var SEEDV=2;
+if(!S||!S.cfg){ S={cfg:JSON.parse(JSON.stringify(DEF)),shifts:SEED_SHIFTS,hols:SEED_HOLS,act:SEED_ACT,ovr:{},seedv:SEEDV}; store.write(S); }
+if(!S.ovr) S.ovr={};
+if((S.seedv||0)<SEEDV){
+  SEED_SHIFTS.forEach(function(x){ if(!S.shifts.some(function(y){return y.d===x.d;})) S.shifts.push(x); });
+  SEED_HOLS.forEach(function(d){ if(S.hols.indexOf(d)<0) S.hols.push(d); });
+  for(var a in SEED_ACT){ if(!S.act[a]) S.act[a]=SEED_ACT[a]; }
+  S.seedv=SEEDV; store.write(S);
+}
+for(var k in DEF){ if(S.cfg[k]===undefined) S.cfg[k]=DEF[k]; }
+var C=S.cfg;
+
+/* ---------- date helpers ---------- */
+function D(s){var p=s.split('-');return new Date(+p[0],+p[1]-1,+p[2]);}
+function iso(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function addD(d,n){var x=new Date(d.getTime());x.setDate(x.getDate()+n);return x;}
+function dayDiff(a,b){return Math.round((a.getTime()-b.getTime())/86400000);}
+function mins(t){var p=t.split(':');return (+p[0])*60+(+p[1]);}
+function fmtD(d){return d.getDate()+' '+['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d.getMonth()];}
+var DOW=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+function money(n){return '£'+(n<0?'-':'')+Math.abs(n).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,',');}
+function hrs(n){return n.toFixed(2);}
+
+/* ---------- period ---------- */
+var pIdx=0;
+function pStart(i){return addD(D(C.anchor),i*28);}
+function contractDays(){return C.contractDays.split(',').map(Number);}
+
+/* ---------- shift classification ---------- */
+function classify(sh){
+  var d=D(sh.d), dow=d.getDay();
+  var a=mins(sh.s), b=mins(sh.e); if(b<=a) b+=1440;
+  var ns=mins(C.nightStart), ne=mins(C.nightEnd);
+  var night=0,wknd=0,plain=0;
+  for(var t=a;t<b;t+=15){
+    var dd=(dow+Math.floor(t/1440))%7, tod=t%1440, isN;
+    if(ns>ne) isN=(tod>=ns||tod<ne); else isN=(tod>=ns&&tod<ne);
+    if(dd===0||dd===6) wknd+=0.25;
+    else if(isN) night+=0.25;
+    else plain+=0.25;
+  }
+  return {dow:dow,hours:(b-a)/60,night:night,wknd:wknd,plain:plain};
+}
+
+/* ---------- period calculation ---------- */
+function calc(i){
+  var st=pStart(i), en=addD(st,27), cd=contractDays();
+  var weeks=[],days=[],T={hours:0,basic:0,ot:0,night:0,wknd:0,holDays:0};
+  for(var w=0;w<4;w++){
+    var ws=addD(st,w*7), W={start:ws,hours:0,basic:0,ot:0,night:0,wknd:0,hol:0,days:[]};
+    for(var j=0;j<7;j++){
+      var dt=addD(ws,j), key=iso(dt);
+      var sh=S.shifts.filter(function(x){return x.d===key;});
+      var isHol=S.hols.indexOf(key)>-1;
+      var day={date:dt,key:key,hours:0,night:0,wknd:0,basic:0,ot:0,hol:isHol,rest:cd.indexOf(dt.getDay())<0,shifts:sh};
+      for(var m=0;m<sh.length;m++){var c=classify(sh[m]);day.hours+=c.hours;day.night+=c.night;day.wknd+=c.wknd;}
+      if(day.hours>0){
+        day.basic=day.rest?0:Math.min(day.hours,C.dayHours);
+        day.ot=day.hours-day.basic;
+      }
+      day.pay=day.basic*C.base+day.ot*C.base*C.otMult
+             +day.night*C.base*C.nightPct+day.wknd*C.base*C.wkndPct;
+      if(isHol) day.pay=C.holRate;
+      if(isHol) W.hol++;
+      W.hours+=day.hours; W.night+=day.night; W.wknd+=day.wknd;
+      W.days.push(day); days.push(day);
+    }
+    if(C.otRule==='weekly'){
+      W.basic=W.days.reduce(function(s,d){return s+d.basic;},0);
+      W.ot=Math.max(0,W.hours+W.hol*C.dayHours-C.weekHours);
+    }else{
+      W.basic=W.days.reduce(function(s,d){return s+d.basic;},0);
+      W.ot=W.days.reduce(function(s,d){return s+d.ot;},0);
+    }
+    T.hours+=W.hours;T.basic+=W.basic;T.ot+=W.ot;T.night+=W.night;T.wknd+=W.wknd;T.holDays+=W.hol;
+    weeks.push(W);
+  }
+
+  var p={};
+  p.basic=T.basic*C.base;
+  p.ot=T.ot*C.base*C.otMult;
+  p.hol=T.holDays*C.holRate;
+  p.pre=+C.preTax;
+  p.night=T.night*C.base*C.nightPct;
+  p.wknd=T.wknd*C.base*C.wkndPct;
+  p.da=p.basic*(C.daPct/100);
+  var gross=p.basic+p.ot+p.hol+p.pre+p.night+p.wknd+p.da;
+  var o=S.ovr[iso(st)];
+  var penPct=(o&&o.pensionPct!=null&&o.pensionPct!=='')?+o.pensionPct:+C.pensionPct;
+  var pen=gross*(penPct/100);
+  var total=gross-pen;
+  var tax=paye(total,C.taxCode), ni=nic(total), usd=+C.usdaw;
+  return {start:st,end:en,payDate:addD(en,13),weeks:weeks,days:days,T:T,p:p,penPct:penPct,penOvr:!!(o&&o.pensionPct!=null),
+          gross:r2(gross),pen:r2(pen),total:r2(total),tax:r2(tax),ni:r2(ni),usdaw:r2(usd),
+          ded:r2(tax+ni+usd),net:r2(total-tax-ni-usd)};
+}
+function r2(n){return Math.round(n*100)/100;}
+
+function paye(pay,code){
+  var allow=((code*10+9)/52)*4;
+  var b1=(37700/52)*4, b2=(74870/52)*4;
+  var t=Math.max(0,pay-allow), tax=0;
+  var a=Math.min(t,b1); tax+=a*0.2; t-=a;
+  var b=Math.min(t,b2); tax+=b*0.4; t-=b;
+  tax+=t*0.45;
+  return tax;
+}
+function nic(pay){
+  var pt=(12570/52)*4, uel=(50270/52)*4;
+  return Math.max(0,Math.min(pay,uel)-pt)*0.08 + Math.max(0,pay-uel)*0.02;
+}
+
+/* ---------- rendering ---------- */
+function el(id){return document.getElementById(id);}
+function rows(host,list){
+  host.innerHTML=list.map(function(r){
+    return '<div class="row'+(r.neg?' neg':'')+(r.total?' total':'')+'"><div class="k">'+r.k+(r.s?'<small>'+r.s+'</small>':'')+'</div><div class="v num">'+r.v+'</div></div>';
+  }).join('');
+}
+
+function render(){
+  var R=calc(pIdx);
+  el('prng').textContent=fmtD(R.start)+' – '+fmtD(R.end)+' '+R.end.getFullYear();
+  el('ppay').textContent='Paid Friday '+fmtD(R.payDate)+' · '+R.T.hours.toFixed(2)+' h worked'+(R.T.holDays?' · '+R.T.holDays+' hol':'');
+
+  el('net').textContent=money(R.net);
+  el('netsub').textContent=money(R.total)+' total pay, '+money(R.ded)+' deducted';
+
+  var tot=R.T.hours||1;
+  el('hbar').innerHTML=
+    '<i style="background:var(--basic);width:'+(R.T.basic/tot*100)+'%"></i>'+
+    '<i style="background:var(--ot);width:'+(R.T.ot/tot*100)+'%"></i>';
+  el('kBasic').textContent=hrs(R.T.basic);
+  el('kOt').textContent=hrs(R.T.ot);
+  el('kNight').textContent=hrs(R.T.night);
+  el('kWknd').textContent=hrs(R.T.wknd);
+
+  rows(el('payments'),[
+    {k:'Basic pay',s:hrs(R.T.basic)+' h @ '+money(C.base),v:money(R.p.basic)},
+    {k:'Overtime 1.5',s:hrs(R.T.ot)+' h @ '+money(C.base*C.otMult),v:money(R.p.ot)},
+    {k:'Holiday pay',s:R.T.holDays+' days @ '+money(C.holRate),v:money(R.p.hol)},
+    {k:'Pre tax pension',s:'manual entry',v:money(R.p.pre)},
+    {k:'Night premium',s:hrs(R.T.night)+' h @ '+money(C.base*C.nightPct),v:money(R.p.night)},
+    {k:'Weekend premium',s:hrs(R.T.wknd)+' h @ '+money(C.base*C.wkndPct),v:money(R.p.wknd)},
+    {k:'Driver allowance',s:C.daPct+'% of basic',v:money(R.p.da)},
+    {k:'Positive payments subtotal',s:'before pension sacrifice — not your gross',v:money(R.gross),total:true}
+  ]);
+
+  rows(el('deds'),[
+    {k:'Retirement Savings SMARTT',s:R.penPct+'% of gross, before tax'+(R.penOvr?' · set for this period':''),v:money(R.pen),neg:true},
+    {k:'Total pay',s:'your gross — tax and NI run on this',v:money(R.total)},
+    {k:'PAYE tax',s:'code '+C.taxCode+'L, estimate',v:money(R.tax),neg:true},
+    {k:'National Insurance',s:'Cat A',v:money(R.ni),neg:true},
+    {k:'Union — USDAW',v:money(R.usdaw),neg:true},
+    {k:'Total deductions',v:money(R.ded),neg:true},
+    {k:'Net pay',s:'total pay less total deductions',v:money(R.net),total:true}
+  ]);
+
+  rows(el('hours'),[
+    {k:'Total worked',v:hrs(R.T.hours)},
+    {k:'Basic',v:hrs(R.T.basic)},
+    {k:'Overtime 1.5',v:hrs(R.T.ot)},
+    {k:'Night premium',s:C.nightStart+'–'+C.nightEnd+' Mon–Fri',v:hrs(R.T.night)},
+    {k:'Weekend premium',s:'all Sat & Sun hours',v:hrs(R.T.wknd)},
+    {k:'Holiday days',v:R.T.holDays.toFixed(2)}
+  ]);
+
+  el('ovrPen').value=R.penPct;
+  el('defPen').textContent=C.pensionPct;
+  el('ovrHint').textContent=R.penOvr
+    ? 'This period uses '+R.penPct+'%. Earlier periods keep the default, so the 17 Jul and 14 Aug checks stay valid.'
+    : 'Using the default '+C.pensionPct+'%. Set it here for the period your increase actually landed in, rather than changing the default.';
+
+  // editable week grid
+  var g='';
+  R.weeks.forEach(function(W,i){
+    g+='<div class="card"><h2>Week '+(i+1)+' &middot; '+fmtD(W.start)+' &ndash; '+fmtD(addD(W.start,6))+'</h2>';
+    W.days.forEach(function(d){
+      var sh=d.shifts[0]||{s:'',e:''};
+      var cls='drow'+(d.rest?' rest':'')+((d.date.getDay()===0||d.date.getDay()===6)?' wknd':'');
+      g+='<div class="'+cls+'">'+
+         '<div class="dl">'+DOW[d.date.getDay()]+'<b>'+d.date.getDate()+'</b></div>'+
+         '<input type="time" step="900" class="ti" data-d="'+d.key+'" data-f="s" value="'+sh.s+'">'+
+         '<input type="time" step="900" class="ti" data-d="'+d.key+'" data-f="e" value="'+sh.e+'">'+
+         '<div class="dh'+(d.hours||d.hol?' has':'')+'">'+(d.hol?'hol':(d.hours?hrs(d.hours):'&mdash;'))+'</div>'+
+         '<div class="dp'+(d.pay?' has':'')+'">'+(d.pay?money(d.pay):'&mdash;')+'</div>'+
+         '<button class="hb'+(d.hol?' on':'')+'" data-h="'+d.key+'">H</button>'+
+         '</div>';
+      for(var n=1;n<d.shifts.length;n++) g+='<div class="extra">+ second shift '+d.shifts[n].s+'&ndash;'+d.shifts[n].e+' (edit on the Shifts tab)</div>';
+    });
+    var wpay=W.days.reduce(function(a,d){return a+(d.pay||0);},0);
+    g+='<div class="wtot"><span><b>'+hrs(W.hours)+'</b> h</span><span>Week <b>'+money(wpay)+'</b></span><span>OT <b>'+hrs(W.ot)+'</b></span><span>Night <b>'+hrs(W.night)+'</b></span><span>Wknd <b>'+hrs(W.wknd)+'</b></span>'+(W.hol?'<span>Hol <b>'+W.hol+'</b></span>':'')+'</div></div>';
+  });
+  el('wgrid').innerHTML=g;
+
+  el('wgrid').querySelectorAll('.ti').forEach(function(inp){
+    inp.onchange=function(){
+      var key=inp.getAttribute('data-d');
+      var row=inp.parentNode;
+      var a=row.querySelector('[data-f="s"]').value, b=row.querySelector('[data-f="e"]').value;
+      var extras=S.shifts.filter(function(x){return x.d===key;}).slice(1);
+      S.shifts=S.shifts.filter(function(x){return x.d!==key;});
+      if(a&&b) S.shifts.push({d:key,s:a,e:b});
+      S.shifts=S.shifts.concat(extras);
+      save();
+    };
+  });
+  el('wgrid').querySelectorAll('.hb').forEach(function(b){
+    b.onclick=function(){
+      var key=b.getAttribute('data-h');
+      if(S.hols.indexOf(key)>-1) S.hols=S.hols.filter(function(x){return x!==key;});
+      else S.hols.push(key);
+      save();
+    };
+  });
+
+  var wt='<tr><th>Week</th><th>Hours</th><th>Basic</th><th>OT</th><th>Night</th><th>Wknd</th></tr>';
+  R.weeks.forEach(function(W,i){
+    wt+='<tr'+(W.ot>0?' class="ot"':'')+'><td>'+(i+1)+'</td><td class="num">'+hrs(W.hours)+'</td><td class="num">'+hrs(W.basic)+'</td><td class="num">'+hrs(W.ot)+'</td><td class="num">'+hrs(W.night)+'</td><td class="num">'+hrs(W.wknd)+'</td></tr>';
+  });
+  wt+='<tr class="tot"><td><b>All</b></td><td class="num"><b>'+hrs(R.T.hours)+'</b></td><td class="num"><b>'+hrs(R.T.basic)+'</b></td><td class="num"><b>'+hrs(R.T.ot)+'</b></td><td class="num"><b>'+hrs(R.T.night)+'</b></td><td class="num"><b>'+hrs(R.T.wknd)+'</b></td></tr>';
+  el('wtable').innerHTML=wt;
+  el('wrule').textContent=C.otRule==='daily'?('anything over '+C.dayHours+' h in a day, plus all rest-day hours'):('anything over '+C.weekHours+' h in a Sun\u2013Sat week, with holiday hours counting toward the total');
+
+  // shift list
+  var out='';
+  R.days.forEach(function(d){
+    if(d.hol) out+='<div class="shift"><div class="d"><b>'+d.date.getDate()+'</b>'+DOW[d.date.getDay()]+'</div><div class="t"><div class="tm">Holiday day</div></div><div class="h num">'+C.dayHours.toFixed(2)+'</div><button class="x" data-hol="'+d.key+'">×</button></div>';
+    d.shifts.forEach(function(sh,n){
+      var c=classify(sh), tt=c.hours||1;
+      out+='<div class="shift"><div class="d"><b>'+d.date.getDate()+'</b>'+DOW[d.date.getDay()]+'</div><div class="t"><div class="tm">'+sh.s+' – '+sh.e+(d.rest?' <span class="tag">overtime</span>':'')+'</div>'+
+        '<div class="mini-bar"><i style="background:var(--night);width:'+(c.night/tt*100)+'%"></i><i style="background:var(--wknd);width:'+(c.wknd/tt*100)+'%"></i><i style="background:var(--basic);width:'+(c.plain/tt*100)+'%"></i></div></div>'+
+        '<div class="h num">'+hrs(c.hours)+'</div><button class="x" data-sh="'+sh.d+'|'+sh.s+'|'+sh.e+'">×</button></div>';
+    });
+  });
+  el('slist').innerHTML=out||'<div class="hint">No shifts in this period yet. Add one above.</div>';
+  el('slist').querySelectorAll('[data-sh]').forEach(function(b){
+    b.onclick=function(){var p=b.dataset.sh.split('|');
+      S.shifts=S.shifts.filter(function(x){return !(x.d===p[0]&&x.s===p[1]&&x.e===p[2]);});save();};
+  });
+  el('slist').querySelectorAll('[data-hol]').forEach(function(b){
+    b.onclick=function(){S.hols=S.hols.filter(function(x){return x!==b.dataset.hol;});save();};
+  });
+
+  renderCheck(R);
+}
+
+/* ---------- check slip ---------- */
+var ACT=[['basic','Basic pay'],['ot','Overtime 1.5'],['hol','Holiday pay'],['pre','Pre tax pension'],
+['night','Night premium'],['wknd','Weekend premium'],['da','Driver allowance'],['pen','SMARTT pension'],
+['total','Total pay'],['tax','Tax'],['ni','NI'],['usdaw','USDAW'],['net','Net pay'],
+['hOt','OT hours'],['hNight','Night hours'],['hWknd','Weekend hours'],['hHol','Holiday days']];
+
+function renderCheck(R){
+  var key=iso(R.start), a=S.act[key]||{};
+  el('actForm').innerHTML=ACT.map(function(f){
+    return '<div><label>'+f[1]+'</label><input type="number" step="0.01" id="a_'+f[0]+'" value="'+(a[f[0]]!==undefined?a[f[0]]:'')+'"></div>';
+  }).join('');
+  var mine={basic:R.p.basic,ot:R.p.ot,hol:R.p.hol,pre:R.p.pre,night:R.p.night,wknd:R.p.wknd,da:R.p.da,
+    pen:R.pen,total:R.total,tax:R.tax,ni:R.ni,usdaw:R.usdaw,net:R.net,
+    hOt:R.T.ot,hNight:R.T.night,hWknd:R.T.wknd,hHol:R.T.holDays};
+  var t='<tr><th>Line</th><th>Calculated</th><th>Paid</th><th>Diff</th></tr>';
+  ACT.forEach(function(f){
+    var m=mine[f[0]], v=a[f[0]];
+    var isH=f[0][0]==='h';
+    if(v===undefined||v===''||v===null){
+      t+='<tr><td>'+f[1]+'</td><td class="num">'+(isH?hrs(m):money(m))+'</td><td class="num">—</td><td>—</td></tr>';
+    }else{
+      var d=r2(m-v), ok=Math.abs(d)<(isH?0.011:0.011);
+      t+='<tr><td>'+f[1]+'</td><td class="num">'+(isH?hrs(m):money(m))+'</td><td class="num">'+(isH?hrs(v):money(v))+'</td><td class="num '+(ok?'ok':'bad')+'">'+(ok?'✓':(d>0?'+':'')+(isH?d.toFixed(2):money(d)))+'</td></tr>';
+    }
+  });
+  el('cmp').innerHTML=t;
+}
+
+/* ---------- settings forms ---------- */
+var RATE=[['base','Base rate £/h'],['otMult','Overtime multiplier'],['nightPct','Night premium (0.25 = +25%)'],
+['wkndPct','Weekend premium (0.3333 = +33.3%)'],['holRate','Holiday pay per day £'],['daPct','Driver allowance % of basic']];
+var RULE=[['nightStart','Night window starts'],['nightEnd','Night window ends'],['dayHours','Contracted hours per day'],
+['weekHours','Contracted hours per week'],['contractDays','Rostered days (0=Sun … 6=Sat)'],['anchor','A period start date (Sunday)']];
+var DEDF=[['pensionPct','SMARTT pension % of gross'],['taxCode','Tax code number'],['usdaw','USDAW per period £'],['preTax','Pre tax pension payment £']];
+
+function fillForm(host,list){
+  el(host).innerHTML=list.map(function(f){
+    var v=C[f[0]];
+    var type=(f[0]==='anchor')?'date':(f[0]==='nightStart'||f[0]==='nightEnd')?'time':(f[0]==='contractDays')?'text':'number';
+    return '<div><label>'+f[1]+'</label><input id="c_'+f[0]+'" type="'+type+'" '+(type==='number'?'step="any"':'')+' value="'+v+'"></div>';
+  }).join('');
+}
+function buildSettings(){
+  fillForm('rateForm',RATE); fillForm('ruleForm',RULE); fillForm('dedForm',DEDF);
+  el('ruleForm').insertAdjacentHTML('beforeend',
+    '<div><label>Overtime rule</label><select id="c_otRule"><option value="daily">Per day over contracted hours</option><option value="weekly">Per week over contracted hours</option></select></div>');
+  el('c_otRule').value=C.otRule;
+}
+
+/* ---------- events ---------- */
+function save(){S.cfg=C;store.write(S);render();}
+
+document.querySelectorAll('nav button').forEach(function(b){
+  b.onclick=function(){
+    document.querySelectorAll('nav button').forEach(function(x){x.classList.remove('on');});
+    document.querySelectorAll('section').forEach(function(x){x.classList.remove('on');});
+    b.classList.add('on'); el('tab-'+b.dataset.t).classList.add('on');
+    window.scrollTo(0,0);
+  };
+});
+el('prev').onclick=function(){pIdx--;render();};
+el('next').onclick=function(){pIdx++;render();};
+
+el('addShift').onclick=function(){
+  var d=el('fD').value,s=el('fS').value,e=el('fE').value;
+  if(!d||!s||!e){alert('Fill in date, start and end.');return;}
+  S.shifts.push({d:d,s:s,e:e});
+  pIdx=Math.floor(dayDiff(D(d),D(C.anchor))/28);
+  save();
+};
+el('addHol').onclick=function(){
+  var d=el('fD').value;
+  if(!d){alert('Pick a date first.');return;}
+  if(S.hols.indexOf(d)<0) S.hols.push(d);
+  pIdx=Math.floor(dayDiff(D(d),D(C.anchor))/28);
+  save();
+};
+el('saveOvr').onclick=function(){
+  var v=parseFloat(el('ovrPen').value);
+  if(isNaN(v)){alert('Enter a percentage.');return;}
+  S.ovr[iso(pStart(pIdx))]={pensionPct:v}; save();
+};
+el('fwdOvr').onclick=function(){
+  var v=parseFloat(el('ovrPen').value);
+  if(isNaN(v)){alert('Enter a percentage.');return;}
+  for(var i=0;i<40;i++) S.ovr[iso(pStart(pIdx+i))]={pensionPct:v};
+  save();
+};
+el('clearOvr').onclick=function(){delete S.ovr[iso(pStart(pIdx))];save();};
+
+el('saveAct').onclick=function(){
+  var key=iso(pStart(pIdx)), o={};
+  ACT.forEach(function(f){var v=el('a_'+f[0]).value;if(v!=='')o[f[0]]=parseFloat(v);});
+  S.act[key]=o; save();
+};
+el('clearAct').onclick=function(){delete S.act[iso(pStart(pIdx))];save();};
+el('saveSet').onclick=function(){
+  RATE.concat(RULE,DEDF).forEach(function(f){
+    var v=el('c_'+f[0]).value;
+    C[f[0]]=(f[0]==='anchor'||f[0]==='nightStart'||f[0]==='nightEnd'||f[0]==='contractDays')?v:parseFloat(v);
+  });
+  C.otRule=el('c_otRule').value;
+  save(); alert('Settings saved.');
+};
+el('expBtn').onclick=function(){
+  var blob=new Blob([JSON.stringify(S,null,1)],{type:'application/json'});
+  var a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='pay-data-'+iso(new Date())+'.json';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+};
+el('impBtn').onclick=function(){el('impFile').click();};
+el('impFile').onchange=function(){
+  var f=el('impFile').files[0]; if(!f) return;
+  var r=new FileReader();
+  r.onload=function(){
+    try{
+      var o=JSON.parse(r.result);
+      if(!o.cfg||!o.shifts) throw new Error('not a backup');
+      S=o; if(!S.ovr)S.ovr={}; if(!S.act)S.act={}; if(!S.hols)S.hols=[];
+      for(var k in DEF){ if(S.cfg[k]===undefined) S.cfg[k]=DEF[k]; }
+      C=S.cfg; S.seedv=SEEDV;
+      var last=S.shifts.map(function(x){return x.d;}).sort().pop();
+      if(last) pIdx=Math.floor(dayDiff(D(last),D(C.anchor))/28);
+      buildSettings(); save();
+      alert('Backup loaded.');
+    }catch(e){ alert('That file could not be read as a backup.'); }
+  };
+  r.readAsText(f);
+};
+el('resetAll').onclick=function(){
+  if(!confirm('This wipes all shifts, slip figures and settings on this device. Continue?'))return;
+  S={cfg:JSON.parse(JSON.stringify(DEF)),shifts:SEED_SHIFTS.slice(),hols:SEED_HOLS.slice(),act:SEED_ACT,ovr:{},seedv:SEEDV};C=S.cfg;
+  store.write(S);buildSettings();render();
+};
+
+/* ---------- start on the most recent period with data ---------- */
+(function(){
+  var last=S.shifts.map(function(x){return x.d;}).sort().pop()||iso(new Date());
+  pIdx=Math.floor(dayDiff(D(last),D(C.anchor))/28);
+  el('fD').value=iso(new Date());
+  buildSettings(); render();
+})();
+</script>
+</body>
+</html>
