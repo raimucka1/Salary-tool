@@ -478,9 +478,11 @@ function render(){
       var key=inp.getAttribute('data-d');
       var row=inp.parentNode;
       var a=row.querySelector('[data-f="s"]').value, b=row.querySelector('[data-f="e"]').value;
+      var had=S.shifts.some(function(x){return x.d===key;});
+      if(!a||!b){ if(!a&&!b&&had){ S.shifts=S.shifts.filter(function(x){return x.d!==key;}); save(); } return; }
       var extras=S.shifts.filter(function(x){return x.d===key;}).slice(1);
       S.shifts=S.shifts.filter(function(x){return x.d!==key;});
-      if(a&&b) S.shifts.push({d:key,s:a,e:b});
+      S.shifts.push({d:key,s:a,e:b});
       S.shifts=S.shifts.concat(extras);
       save();
     };

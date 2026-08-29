@@ -234,11 +234,19 @@ button.mini{padding:6px 10px;font-size:12px}
 
 <section id="tab-notes">
   <div class="card">
-    <h2>Getting started</h2>
-    <div class="flag">This is an empty calculator. Load your own figures under Settings, or restore a backup file under Backup &amp; restore.</div>
-    <div class="flag"><b>Rates and rules</b> are all editable in Settings: base rate, premium percentages, the night window, contracted hours and rostered days, holiday day rate, pension percentage, tax code and union subs.</div>
-    <div class="flag"><b>PAYE is an estimate.</b> Real PAYE is cumulative across the tax year; this calculates non-cumulatively, so expect a small difference. National Insurance is exact.</div>
-    <div class="flag"><b>Everything stays on this device</b> in browser storage. Export a backup before clearing browsing data or changing phone.</div>
+    <h2>How pay is worked out</h2>
+    <div class="flag"><b>Basic</b> covers 9.25 h for each contracted day worked.</div>
+    <div class="flag"><b>Overtime 1.5</b> on hours above 46.25 in a Sun&ndash;Sat week. Holiday, bereavement, jury service, maternity and paternity hours count toward that 46.25.</div>
+    <div class="flag"><b>Night premium</b> 22:00&ndash;06:00, Monday to Friday. <b>Weekend premium</b> all hours Saturday and Sunday. Where the two overlap you get the higher one, never both.</div>
+    <div class="flag"><b>Pension</b> is salary sacrifice, taken off before tax. Total Pay is the figure after it comes off, and tax and NI are both calculated on that.</div>
+    <div class="flag"><b>Holiday</b> is paid at the higher of contractual pay or your 52-week average, so the day rate is personal to you and moves each period. Set it in Settings from your latest slip.</div>
+  </div>
+  <div class="card">
+    <h2>Set these yourself</h2>
+    <div class="flag">Rates and rules are already filled in. Four things differ per person and start blank: <b>tax code</b>, <b>pension percentage</b>, <b>USDAW subs</b> and the <b>holiday day rate</b>. All under Settings.</div>
+    <div class="flag"><b>PAYE is an estimate.</b> Real PAYE is cumulative across the tax year; this works non-cumulatively, so expect a difference of well under a pound. National Insurance is exact.</div>
+    <div class="flag"><b>Bank holiday premium is not built yet.</b> The contract gives 50% on eight bank holidays; the app does not apply it.</div>
+    <div class="flag"><b>Everything stays on your own phone</b> in browser storage. Nobody else can see it. Export a backup under Settings before clearing browsing data or changing phone.</div>
   </div>
 </section>
 
@@ -255,11 +263,11 @@ var store={
 
 /* ---------- defaults ---------- */
 var DEF={
-  base:0, otMult:1.5, nightPct:0.25, wkndPct:1/3,
+  base:19.265, otMult:1.5, nightPct:0.25, wkndPct:1/3,
   nightStart:"22:00", nightEnd:"06:00",
   dayHours:9.25, weekHours:46.25, otRule:"weekly",
   contractDays:"0,1,2,3,4",
-  holRate:0, daPct:0, pensionPct:0, preTax:0,
+  holRate:0, daPct:0.67, pensionPct:0, preTax:0,
   taxCode:1257, usdaw:0, anchor:"2026-07-05"
 };
 
@@ -470,9 +478,11 @@ function render(){
       var key=inp.getAttribute('data-d');
       var row=inp.parentNode;
       var a=row.querySelector('[data-f="s"]').value, b=row.querySelector('[data-f="e"]').value;
+      var had=S.shifts.some(function(x){return x.d===key;});
+      if(!a||!b){ if(!a&&!b&&had){ S.shifts=S.shifts.filter(function(x){return x.d!==key;}); save(); } return; }
       var extras=S.shifts.filter(function(x){return x.d===key;}).slice(1);
       S.shifts=S.shifts.filter(function(x){return x.d!==key;});
-      if(a&&b) S.shifts.push({d:key,s:a,e:b});
+      S.shifts.push({d:key,s:a,e:b});
       S.shifts=S.shifts.concat(extras);
       save();
     };
