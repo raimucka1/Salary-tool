@@ -238,6 +238,7 @@ button.mini{padding:6px 10px;font-size:12px}
     <div class="flag"><b>Basic</b> covers 9.25 h for each contracted day worked.</div>
     <div class="flag"><b>Overtime 1.5</b> on hours above 46.25 in a Sun&ndash;Sat week. Holiday, bereavement, jury service, maternity and paternity hours count toward that 46.25.</div>
     <div class="flag"><b>Night premium</b> 22:00&ndash;06:00, Monday to Friday. <b>Weekend premium</b> all hours Saturday and Sunday. Where the two overlap you get the higher one, never both.</div>
+    <div class="flag"><b>Cycle to Work</b> is a salary sacrifice like the pension. Enter your per-period amount under Settings and it comes off before tax and NI, which is where the saving comes from. Leave it at 0 if you are not on the scheme.</div>
     <div class="flag"><b>Pension</b> is salary sacrifice, taken off before tax. Total Pay is the figure after it comes off, and tax and NI are both calculated on that.</div>
     <div class="flag"><b>Holiday</b> is paid at the higher of contractual pay or your 52-week average, so the day rate is personal to you and moves each period. Set it in Settings from your latest slip.</div>
   </div>
@@ -267,7 +268,7 @@ var DEF={
   nightStart:"22:00", nightEnd:"06:00",
   dayHours:9.25, weekHours:46.25, otRule:"weekly",
   contractDays:"0,1,2,3,4",
-  holRate:0, daPct:0.67, pensionPct:0, preTax:0,
+  holRate:0, daPct:0.67, pensionPct:0, preTax:0, cycle:0,
   taxCode:1257, usdaw:0, anchor:"2026-07-05"
 };
 
@@ -368,9 +369,10 @@ function calc(i){
   var o=S.ovr[iso(st)];
   var penPct=(o&&o.pensionPct!=null&&o.pensionPct!=='')?+o.pensionPct:+C.pensionPct;
   var pen=gross*(penPct/100);
-  var total=gross-pen;
+  var cyc=+C.cycle||0;
+  var total=gross-pen-cyc;
   var tax=paye(total,C.taxCode), ni=nic(total), usd=+C.usdaw;
-  return {start:st,end:en,payDate:addD(en,13),weeks:weeks,days:days,T:T,p:p,penPct:penPct,penOvr:!!(o&&o.pensionPct!=null),
+  return {start:st,end:en,payDate:addD(en,13),weeks:weeks,days:days,T:T,p:p,cyc:r2(cyc),penPct:penPct,penOvr:!!(o&&o.pensionPct!=null),
           gross:r2(gross),pen:r2(pen),total:r2(total),tax:r2(tax),ni:r2(ni),usdaw:r2(usd),
           ded:r2(tax+ni+usd),net:r2(total-tax-ni-usd)};
 }
@@ -428,6 +430,7 @@ function render(){
 
   rows(el('deds'),[
     {k:'Retirement Savings SMARTT',s:R.penPct+'% of gross, before tax'+(R.penOvr?' · set for this period':''),v:money(R.pen),neg:true},
+    {k:'Cycle to Work',s:'salary sacrifice, before tax',v:money(R.cyc),neg:true},
     {k:'Total pay',s:'your gross — tax and NI run on this',v:money(R.total)},
     {k:'PAYE tax',s:'code '+C.taxCode+'L, estimate',v:money(R.tax),neg:true},
     {k:'National Insurance',s:'Cat A',v:money(R.ni),neg:true},
@@ -560,7 +563,7 @@ var RATE=[['base','Base rate £/h'],['otMult','Overtime multiplier'],['nightPct'
 ['wkndPct','Weekend premium (0.3333 = +33.3%)'],['holRate','Holiday pay per day £'],['daPct','Driver allowance % of basic']];
 var RULE=[['nightStart','Night window starts'],['nightEnd','Night window ends'],['dayHours','Contracted hours per day'],
 ['weekHours','Contracted hours per week'],['contractDays','Rostered days (0=Sun … 6=Sat)'],['anchor','A period start date (Sunday)']];
-var DEDF=[['pensionPct','SMARTT pension % of gross'],['taxCode','Tax code number'],['usdaw','USDAW per period £'],['preTax','Pre tax pension payment £']];
+var DEDF=[['pensionPct','SMARTT pension % of gross'],['taxCode','Tax code number'],['usdaw','USDAW per period £'],['preTax','Pre tax pension payment £'],['cycle','Cycle to Work £ per period']];
 
 function fillForm(host,list){
   el(host).innerHTML=list.map(function(f){
