@@ -113,7 +113,7 @@ button.mini{padding:6px 10px;font-size:12px}
 <nav>
   <button data-t="pay" class="on">Pay</button>
   <button data-t="weeks">Weeks</button>
-  <button data-t="shifts">Shifts</button>
+  <button data-t="shifts">Add day</button>
   <button data-t="check">Check slip</button>
   <button data-t="set">Settings</button>
   <button data-t="notes">Rules</button>
@@ -172,7 +172,7 @@ button.mini{padding:6px 10px;font-size:12px}
 
 <section id="tab-shifts">
   <div class="card">
-    <h2>Add a shift</h2>
+    <h2>Add a day outside this period</h2>
     <div class="grid g3">
       <div><label>Date</label><input type="date" id="fD"></div>
       <div><label>Start</label><input type="time" id="fS" step="900" value="05:00"></div>
@@ -182,11 +182,7 @@ button.mini{padding:6px 10px;font-size:12px}
       <button class="btn" id="addShift">Add shift</button>
       <button class="btn ghost" id="addHol">Add holiday day</button>
     </div>
-    <div class="hint">End before start means the shift runs past midnight. Holiday uses the date only.</div>
-  </div>
-  <div class="card">
-    <h2>Shifts this period</h2>
-    <div id="slist"></div>
+    <div class="hint">For anything in the four weeks on screen, use the Weeks tab instead — it is quicker. This is for a date outside them, or a second shift on a day you already have. End before start means the shift runs past midnight.</div>
   </div>
 </section>
 
@@ -511,26 +507,6 @@ function render(){
   wt+='<tr class="tot"><td><b>All</b></td><td class="num"><b>'+hrs(R.T.hours)+'</b></td><td class="num"><b>'+hrs(R.T.basic)+'</b></td><td class="num"><b>'+hrs(R.T.ot)+'</b></td><td class="num"><b>'+hrs(R.T.night)+'</b></td><td class="num"><b>'+hrs(R.T.wknd)+'</b></td></tr>';
   el('wtable').innerHTML=wt;
   el('wrule').textContent=C.otRule==='daily'?('anything over '+C.dayHours+' h in a day, plus all rest-day hours'):('anything over '+C.weekHours+' h in a Sun\u2013Sat week, with holiday hours counting toward the total');
-
-  // shift list
-  var out='';
-  R.days.forEach(function(d){
-    if(d.hol) out+='<div class="shift"><div class="d"><b>'+d.date.getDate()+'</b>'+DOW[d.date.getDay()]+'</div><div class="t"><div class="tm">Holiday day</div></div><div class="h num">'+C.dayHours.toFixed(2)+'</div><button class="x" data-hol="'+d.key+'">×</button></div>';
-    d.shifts.forEach(function(sh,n){
-      var c=classify(sh), tt=c.hours||1;
-      out+='<div class="shift"><div class="d"><b>'+d.date.getDate()+'</b>'+DOW[d.date.getDay()]+'</div><div class="t"><div class="tm">'+sh.s+' – '+sh.e+(d.rest?' <span class="tag">overtime</span>':'')+'</div>'+
-        '<div class="mini-bar"><i style="background:var(--night);width:'+(c.night/tt*100)+'%"></i><i style="background:var(--wknd);width:'+(c.wknd/tt*100)+'%"></i><i style="background:var(--basic);width:'+(c.plain/tt*100)+'%"></i></div></div>'+
-        '<div class="h num">'+hrs(c.hours)+'</div><button class="x" data-sh="'+sh.d+'|'+sh.s+'|'+sh.e+'">×</button></div>';
-    });
-  });
-  el('slist').innerHTML=out||'<div class="hint">No shifts in this period yet. Add one above.</div>';
-  el('slist').querySelectorAll('[data-sh]').forEach(function(b){
-    b.onclick=function(){var p=b.dataset.sh.split('|');
-      S.shifts=S.shifts.filter(function(x){return !(x.d===p[0]&&x.s===p[1]&&x.e===p[2]);});save();};
-  });
-  el('slist').querySelectorAll('[data-hol]').forEach(function(b){
-    b.onclick=function(){S.hols=S.hols.filter(function(x){return x!==b.dataset.hol;});save();};
-  });
 
   renderCheck(R);
 }
