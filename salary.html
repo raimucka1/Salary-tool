@@ -262,8 +262,9 @@ var store={
 };
 
 /* ---------- defaults ---------- */
+var BANKHOL=["2026-01-01","2026-04-03","2026-04-06","2026-05-04","2026-05-25","2026-08-31","2026-12-25","2026-12-28","2027-01-01","2027-03-26","2027-03-29","2027-05-03","2027-05-31","2027-08-30","2027-12-27","2027-12-28"];
 var DEF={
-  base:19.265, otMult:1.5, nightPct:0.25, wkndPct:1/3,
+  base:19.265, otMult:1.5, nightPct:0.25, wkndPct:1/3, bhPct:0.5,
   nightStart:"22:00", nightEnd:"06:00",
   dayHours:9.25, weekHours:46.25, otRule:"weekly",
   contractDays:"0,1,2,3,4",
@@ -311,38 +312,39 @@ function classify(sh){
   var d=D(sh.d), dow=d.getDay();
   var a=mins(sh.s), b=mins(sh.e); if(b<=a) b+=1440;
   var ns=mins(C.nightStart), ne=mins(C.nightEnd);
-  var night=0,wknd=0,plain=0;
+  var night=0,wknd=0,plain=0,bh=0;
   for(var t=a;t<b;t+=15){
-    var dd=(dow+Math.floor(t/1440))%7, tod=t%1440, isN;
+    var off=Math.floor(t/1440), dd=(dow+off)%7, tod=t%1440, isN;
     if(ns>ne) isN=(tod>=ns||tod<ne); else isN=(tod>=ns&&tod<ne);
-    if(dd===0||dd===6) wknd+=0.25;
+    if(BANKHOL.indexOf(off?iso(addD(d,off)):sh.d)>-1) bh+=0.25;
+    else if(dd===0||dd===6) wknd+=0.25;
     else if(isN) night+=0.25;
     else plain+=0.25;
   }
-  return {dow:dow,hours:(b-a)/60,night:night,wknd:wknd,plain:plain};
+  return {dow:dow,hours:(b-a)/60,night:night,wknd:wknd,plain:plain,bh:bh};
 }
 
 /* ---------- period calculation ---------- */
 function calc(i){
   var st=pStart(i), en=addD(st,27), cd=contractDays();
-  var weeks=[],days=[],T={hours:0,basic:0,ot:0,night:0,wknd:0,holDays:0};
+  var weeks=[],days=[],T={hours:0,basic:0,ot:0,night:0,wknd:0,bh:0,holDays:0};
   for(var w=0;w<4;w++){
-    var ws=addD(st,w*7), W={start:ws,hours:0,basic:0,ot:0,night:0,wknd:0,hol:0,days:[]};
+    var ws=addD(st,w*7), W={start:ws,hours:0,basic:0,ot:0,night:0,wknd:0,bh:0,hol:0,days:[]};
     for(var j=0;j<7;j++){
       var dt=addD(ws,j), key=iso(dt);
       var sh=S.shifts.filter(function(x){return x.d===key;});
       var isHol=S.hols.indexOf(key)>-1;
-      var day={date:dt,key:key,hours:0,night:0,wknd:0,basic:0,ot:0,hol:isHol,rest:cd.indexOf(dt.getDay())<0,shifts:sh};
-      for(var m=0;m<sh.length;m++){var c=classify(sh[m]);day.hours+=c.hours;day.night+=c.night;day.wknd+=c.wknd;}
+      var day={date:dt,key:key,hours:0,night:0,wknd:0,bh:0,basic:0,ot:0,hol:isHol,rest:cd.indexOf(dt.getDay())<0,shifts:sh};
+      for(var m=0;m<sh.length;m++){var c=classify(sh[m]);day.hours+=c.hours;day.night+=c.night;day.wknd+=c.wknd;day.bh+=c.bh;}
       if(day.hours>0){
         day.basic=day.rest?0:Math.min(day.hours,C.dayHours);
         day.ot=day.hours-day.basic;
       }
       day.pay=day.basic*C.base+day.ot*C.base*C.otMult
-             +day.night*C.base*C.nightPct+day.wknd*C.base*C.wkndPct;
+             +day.night*C.base*C.nightPct+day.wknd*C.base*C.wkndPct+day.bh*C.base*C.bhPct;
       if(isHol) day.pay=C.holRate;
       if(isHol) W.hol++;
-      W.hours+=day.hours; W.night+=day.night; W.wknd+=day.wknd;
+      W.hours+=day.hours; W.night+=day.night; W.wknd+=day.wknd; W.bh+=day.bh;
       W.days.push(day); days.push(day);
     }
     if(C.otRule==='weekly'){
@@ -352,7 +354,7 @@ function calc(i){
       W.basic=W.days.reduce(function(s,d){return s+d.basic;},0);
       W.ot=W.days.reduce(function(s,d){return s+d.ot;},0);
     }
-    T.hours+=W.hours;T.basic+=W.basic;T.ot+=W.ot;T.night+=W.night;T.wknd+=W.wknd;T.holDays+=W.hol;
+    T.hours+=W.hours;T.basic+=W.basic;T.ot+=W.ot;T.night+=W.night;T.wknd+=W.wknd;T.bh+=W.bh;T.holDays+=W.hol;
     weeks.push(W);
   }
 
@@ -363,8 +365,9 @@ function calc(i){
   p.pre=+C.preTax;
   p.night=T.night*C.base*C.nightPct;
   p.wknd=T.wknd*C.base*C.wkndPct;
+  p.bh=T.bh*C.base*C.bhPct;
   p.da=p.basic*(C.daPct/100);
-  var gross=p.basic+p.ot+p.hol+p.pre+p.night+p.wknd+p.da;
+  var gross=p.basic+p.ot+p.hol+p.pre+p.night+p.wknd+p.bh+p.da;
   var o=S.ovr[iso(st)];
   var penPct=(o&&o.pensionPct!=null&&o.pensionPct!=='')?+o.pensionPct:+C.pensionPct;
   var pen=gross*(penPct/100);
@@ -423,6 +426,7 @@ function render(){
     {k:'Pre tax pension',s:'manual entry',v:money(R.p.pre)},
     {k:'Night premium',s:hrs(R.T.night)+' h @ '+money(C.base*C.nightPct),v:money(R.p.night)},
     {k:'Weekend premium',s:hrs(R.T.wknd)+' h @ '+money(C.base*C.wkndPct),v:money(R.p.wknd)},
+    {k:'Bank holiday premium',s:hrs(R.T.bh)+' h @ '+money(C.base*C.bhPct),v:money(R.p.bh)},
     {k:'Driver allowance',s:C.daPct+'% of basic',v:money(R.p.da)},
     {k:'Positive payments subtotal',s:'before pension sacrifice — not your gross',v:money(R.gross),total:true}
   ]);
@@ -444,6 +448,7 @@ function render(){
     {k:'Overtime 1.5',v:hrs(R.T.ot)},
     {k:'Night premium',s:C.nightStart+'–'+C.nightEnd+' Mon–Fri',v:hrs(R.T.night)},
     {k:'Weekend premium',s:'all Sat & Sun hours',v:hrs(R.T.wknd)},
+    {k:'Bank holiday',s:'eight days a year, replaces night and weekend',v:hrs(R.T.bh)},
     {k:'Holiday days',v:R.T.holDays.toFixed(2)}
   ]);
 
@@ -559,7 +564,7 @@ function renderCheck(R){
 
 /* ---------- settings forms ---------- */
 var RATE=[['base','Base rate £/h'],['otMult','Overtime multiplier'],['nightPct','Night premium (0.25 = +25%)'],
-['wkndPct','Weekend premium (0.3333 = +33.3%)'],['holRate','Holiday pay per day £'],['daPct','Driver allowance % of basic']];
+['wkndPct','Weekend premium (0.3333 = +33.3%)'],['bhPct','Bank holiday premium (0.5 = +50%)'],['holRate','Holiday pay per day £'],['daPct','Driver allowance % of basic']];
 var RULE=[['nightStart','Night window starts'],['nightEnd','Night window ends'],['dayHours','Contracted hours per day'],
 ['weekHours','Contracted hours per week'],['contractDays','Rostered days (0=Sun … 6=Sat)'],['anchor','A period start date (Sunday)']];
 var DEDF=[['pensionPct','SMARTT pension % of gross'],['taxCode','Tax code number'],['usdaw','USDAW per period £'],['preTax','Pre tax pension payment £'],['cycle','Cycle to Work £ per period']];
