@@ -369,7 +369,9 @@ function calc(i){
   var pen=gross*(penPct/100);
   var cyc=+C.cycle||0;
   var total=gross-pen-cyc;
-  var tax=paye(total,C.taxCode), ni=nic(total), usd=+C.usdaw;
+  var tax=0,ni=0,usd=0;
+  if(gross<=0){ pen=0; cyc=0; total=0; }
+  else { if(total<0) total=0; tax=paye(total,C.taxCode); ni=nic(total); usd=+C.usdaw; }
   return {start:st,end:en,payDate:addD(en,13),weeks:weeks,days:days,T:T,p:p,cyc:r2(cyc),penPct:penPct,penOvr:!!(o&&o.pensionPct!=null),
           gross:r2(gross),pen:r2(pen),total:r2(total),tax:r2(tax),ni:r2(ni),usdaw:r2(usd),
           ded:r2(tax+ni+usd),net:r2(total-tax-ni-usd)};
@@ -398,7 +400,7 @@ function rows(host,list){
   }).join('');
 }
 
-function render(){
+function render(skipGrid){
   var R=calc(pIdx);
   el('prng').textContent=fmtD(R.start)+' – '+fmtD(R.end)+' '+R.end.getFullYear();
   el('ppay').textContent='Paid Friday '+fmtD(R.payDate)+' · '+R.T.hours.toFixed(2)+' h worked'+(R.T.holDays?' · '+R.T.holDays+' hol':'');
@@ -454,7 +456,7 @@ function render(){
     ? 'This period uses '+R.penPct+'%. Earlier periods keep the default, so the 17 Jul and 14 Aug checks stay valid.'
     : 'Using the default '+C.pensionPct+'%. Set it here for the period your increase actually landed in, rather than changing the default.';
 
-  // editable week grid
+  if(!skipGrid){
   var g='';
   R.weeks.forEach(function(W,i){
     g+='<div class="card"><h2>Week '+(i+1)+' &middot; '+fmtD(W.start)+' &ndash; '+fmtD(addD(W.start,6))+'</h2>';
@@ -465,14 +467,14 @@ function render(){
          '<div class="dl">'+DOW[d.date.getDay()]+'<b>'+d.date.getDate()+'</b></div>'+
          '<input type="time" step="900" class="ti" data-d="'+d.key+'" data-f="s" value="'+sh.s+'">'+
          '<input type="time" step="900" class="ti" data-d="'+d.key+'" data-f="e" value="'+sh.e+'">'+
-         '<div class="dh'+(d.hours||d.hol?' has':'')+'">'+(d.hol?'hol':(d.hours?hrs(d.hours):'&mdash;'))+'</div>'+
-         '<div class="dp'+(d.pay?' has':'')+'">'+(d.pay?money(d.pay):'&mdash;')+'</div>'+
+         '<div class="dh'+(d.hours||d.hol?' has':'')+'" data-h="'+d.key+'">'+(d.hol?'hol':(d.hours?hrs(d.hours):'&mdash;'))+'</div>'+
+         '<div class="dp'+(d.pay?' has':'')+'" data-p="'+d.key+'">'+(d.pay?money(d.pay):'&mdash;')+'</div>'+
          '<button class="hb'+(d.hol?' on':'')+'" data-h="'+d.key+'">H</button>'+
          '</div>';
       for(var n=1;n<d.shifts.length;n++) g+='<div class="extra">+ second shift '+d.shifts[n].s+'&ndash;'+d.shifts[n].e+' (edit on the Shifts tab)</div>';
     });
     var wpay=W.days.reduce(function(a,d){return a+(d.pay||0);},0);
-    g+='<div class="wtot"><span><b>'+hrs(W.hours)+'</b> h</span><span>Week <b>'+money(wpay)+'</b></span><span>OT <b>'+hrs(W.ot)+'</b></span><span>Night <b>'+hrs(W.night)+'</b></span><span>Wknd <b>'+hrs(W.wknd)+'</b></span>'+(W.hol?'<span>Hol <b>'+W.hol+'</b></span>':'')+'</div></div>';
+    g+='<div class="wtot" id="wtot'+i+'"><span><b>'+hrs(W.hours)+'</b> h</span><span>Week <b>'+money(wpay)+'</b></span><span>OT <b>'+hrs(W.ot)+'</b></span><span>Night <b>'+hrs(W.night)+'</b></span><span>Wknd <b>'+hrs(W.wknd)+'</b></span>'+(W.hol?'<span>Hol <b>'+W.hol+'</b></span>':'')+'</div></div>';
   });
   el('wgrid').innerHTML=g;
 
@@ -482,12 +484,12 @@ function render(){
       var row=inp.parentNode;
       var a=row.querySelector('[data-f="s"]').value, b=row.querySelector('[data-f="e"]').value;
       var had=S.shifts.some(function(x){return x.d===key;});
-      if(!a||!b){ if(!a&&!b&&had){ S.shifts=S.shifts.filter(function(x){return x.d!==key;}); save(); } return; }
+      if(!a||!b){ if(!a&&!b&&had){ S.shifts=S.shifts.filter(function(x){return x.d!==key;}); quickSave(); } return; }
       var extras=S.shifts.filter(function(x){return x.d===key;}).slice(1);
       S.shifts=S.shifts.filter(function(x){return x.d!==key;});
       S.shifts.push({d:key,s:a,e:b});
       S.shifts=S.shifts.concat(extras);
-      save();
+      quickSave();
     };
   });
   el('wgrid').querySelectorAll('.hb').forEach(function(b){
@@ -498,6 +500,19 @@ function render(){
       save();
     };
   });
+  } else {
+    R.days.forEach(function(d){
+      var h=el('wgrid').querySelector('[data-h="'+d.key+'"]');
+      if(h){ h.className='dh'+(d.hours||d.hol?' has':''); h.innerHTML=d.hol?'hol':(d.hours?hrs(d.hours):'&mdash;'); }
+      var pp=el('wgrid').querySelector('[data-p="'+d.key+'"]');
+      if(pp){ pp.className='dp'+(d.pay?' has':''); pp.innerHTML=d.pay?money(d.pay):'&mdash;'; }
+    });
+    R.weeks.forEach(function(W,i){
+      var t=el('wtot'+i); if(!t) return;
+      var wpay=W.days.reduce(function(a,d){return a+(d.pay||0);},0);
+      t.innerHTML='<span><b>'+hrs(W.hours)+'</b> h</span><span>Week <b>'+money(wpay)+'</b></span><span>OT <b>'+hrs(W.ot)+'</b></span><span>Night <b>'+hrs(W.night)+'</b></span><span>Wknd <b>'+hrs(W.wknd)+'</b></span>'+(W.hol?'<span>Hol <b>'+W.hol+'</b></span>':'');
+    });
+  }
 
   var wt='<tr><th>Week</th><th>Hours</th><th>Basic</th><th>OT</th><th>Night</th><th>Wknd</th></tr>';
   R.weeks.forEach(function(W,i){
@@ -561,6 +576,7 @@ function buildSettings(){
 
 /* ---------- events ---------- */
 function save(){S.cfg=C;store.write(S);render();}
+function quickSave(){S.cfg=C;store.write(S);render(true);}
 
 document.querySelectorAll('nav button').forEach(function(b){
   b.onclick=function(){
